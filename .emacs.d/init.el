@@ -1,33 +1,21 @@
-(setq inhibit-startup-message t
-      blink-cursor-mode t)
+(setq inhibit-startup-message t)
 
 (set-frame-font "FiraCode Nerd Font" nil t)
 
-;; Disable tool bar, menu bar, scroll bar.
-(if (display-graphic-p)
-    (progn
-      (tool-bar-mode -1)
-      (scroll-bar-mode -1)
-      (set-fringe-mode 10)))
+(scroll-bar-mode -1)        ; Disable visible scrollbar
+(tool-bar-mode -1)          ; Disable the toolbar
+(tooltip-mode -1)           ; Disable tooltips
+(set-fringe-mode 10)        ; Give some breathing room
 
-(menu-bar-mode -1)
-                                                                                                         
-;; Display line numbers in every buffer
-(setq display-line-numbers-type 'relative) 
-(global-display-line-numbers-mode)
+(menu-bar-mode -1)            ; Disable the menu bar
 
-(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
-                                                                                           
-(setq user-init-file (or load-file-name (buffer-file-name)))
+;; Set up the visible bell
+(setq visible-bell t)
 
-(dolist (mode '(org-mode-hook
-                term-mode-hook
-                shell-mode-hook
-                treemacs-mode-hook
-                eshell-mode-hook))
-  (add-hook mode (lambda () (display-line-numbers-mode 0))))
+(column-number-mode)
+(global-display-line-numbers-mode t)
 
-; Set Packages
+; Initialize package sources
 (require 'package)
 
 (setq package-archives '(("melpa" . "https://melpa.org/packages/")
@@ -36,39 +24,18 @@
 
 (package-initialize)
 (unless package-archive-contents
-  (package-refresh-contents))
+ (package-refresh-contents))
 
+;; Initialize use-package on non-Linux platforms
 (unless (package-installed-p 'use-package)
-  (package-install 'use-package))
+   (package-install 'use-package))
 
 (require 'use-package)
 (setq use-package-always-ensure t)
 
-(use-package evil
-  :init
-  (setq evil-set-undo-system 'undo-redo)
-  (setq evil-want-integration t)
-  (setq evil-want-keybinding nil)
-  (setq evil-want-C-u-scroll t)
-  (setq evil-want-C-i-jump nil)
-  :config
-  (evil-mode 1)
-  (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
-  (define-key evil-insert-state-map (kbd "C-h") 'evil-delete-backward-char-and-join)
-  ;; Use visual line motions even outside of visual-line-mode buffers
-  (evil-global-set-key 'motion "j" 'evil-next-visual-line)
-  (evil-global-set-key 'motion "k" 'evil-previous-visual-line)
-
-  (evil-set-initial-state 'messages-buffer-mode 'normal)
-  (evil-set-initial-state 'dashboard-mode 'normal))
-
-(use-package evil-collection
-  :after evil
-  :config
-  (evil-collection-init))
-
-(unless (package-installed-p 'counsel)
-  (package-install 'counsel))
+(use-package exec-path-from-shell)
+(when (memq window-system '(mac ns x))
+  (exec-path-from-shell-initialize))
 
 (use-package ivy
   :diminish
@@ -88,64 +55,91 @@
   :config
   (ivy-mode 1))
 
-(use-package all-the-icons)
+(use-package ivy-rich
+  :after ivy
+  :init
+  (ivy-rich-mode 1))
+
+(use-package counsel
+  :bind (("C-M-j" . 'counsel-switch-buffer)
+         :map minibuffer-local-map
+         ("C-r" . 'counsel-minibuffer-history))
+  :custom
+  (counsel-linux-app-format-function #'counsel-linux-app-format-function-name-only)
+  :config
+  (counsel-mode 1))
+
+(use-package nerd-icons
+  :custom
+  (nerd-icons-font-family "FiraCode Nerd Font")
+  )
 
 (use-package doom-modeline
+  :ensure t
   :init (doom-modeline-mode 1)
   :custom ((doom-modeline-height 15)))
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(custom-safe-themes
+   '("4ade6b630ba8cbab10703b27fd05bb43aaf8a3e5ba8c2dc1ea4a2de5f8d45882"
+     "48042425e84cd92184837e01d0b4fe9f912d875c43021c3bcb7eeb51f1be5710"
+     default))
+ '(package-selected-packages nil))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
 
 (use-package doom-themes
-  :init (load-theme 'doom-ayu-dark t))
-
-(use-package rainbow-delimiters
-:hook (prog-mode . rainbow-delimiters-mode))
+  :init (load-theme 'doom-ayu-dark))
 
 (use-package which-key
-:init (which-key-mode)
-:diminish which-key-mode
+  :init (which-key-mode)
+  :diminish which-key-mode
+  :config
+  (setq which-key-idle-delay 1))
+
+(use-package evil
+:init
+  (setq evil-want-integration t)
+  (setq evil-want-keybinding nil)
+  (setq evil-want-C-u-scroll t)
+  (setq evil-want-C-i-jump nil)
 :config
-(setq which-key-idle-delay 0.3))
+  (evil-mode 1))
 
-(use-package projectile
-  :diminish projectile-mode
-  :config (projectile-mode)
-  :custom ((projectile-completion-system 'ivy))
-  :bind-keymap
-  ("C-c p" . projectile-command-map)
-  :init
-  ;; NOTE: Set this to the folder where you keep your Git repos!
-  (when (file-directory-p "~/Developer")
-    (setq projectile-project-search-path '("~/Developer/"))
-  (setq projectile-switch-project-action #'projectile-dired)))
-
-
-(use-package counsel-projectile
-  :config (counsel-projectile-mode))
+(use-package evil-collection
+  :after evil
+  :config
+  (evil-collection-init))
 
 (use-package magit
   :custom
   (magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1))
 
 (use-package lsp-mode
-  :commands (lsp lsp-deferred)
   :init
-  (setq lsp-keymap-prefix "C-c l")  ;; Or 'C-l', 's-l'
-  :hook
-  (c-mode-hook . lsp)
-  (c++-mode-hook . lsp)
-  (go-mode-hook . lsp)
-  :config (progn
-	    (setq lsp-prefer-flymake nil)
-	    (lsp-register-custom-settings
-	    '(("gopls.completeUnimported" t t)
-	    ("gopls.staticcheck" t t)))
-	    (lsp-enable-which-key-integration t)))
+  (setq lsp-keymap-prefix "C-c l")
+  :hook (
+         (go-mode . lsp)
+         (zig-mode . lsp)
+         (lsp-mode . lsp-enable-which-key-integration))
+  :commands lsp)
 
-(use-package lsp-treemacs
-  :after lsp)
+(use-package lsp-ui
+    :init
+    (setq lsp-ui-sideline-enable 1)
+    :commands lsp-ui-mode)
 
-(use-package lsp-ivy
-  :after lsp)
+(use-package lsp-ivy :commands lsp-ivy-workspace-symbol)
+(use-package lsp-treemacs :commands lsp-treemacs-errors-list)
+
+(setq flymake-show-diagnostics-at-end-of-line t)
 
 (use-package company
   :after lsp-mode
@@ -159,32 +153,11 @@
 
 (use-package company-box
   :hook (company-mode . company-box-mode))
-;; optional - provides fancy overlay information
-(use-package lsp-ui
-  :ensure t
-  :commands lsp-ui-mode
-  :config (progn
-            ;; disable inline documentation
-            (setq lsp-ui-sideline-enable nil)
-            ;; disable showing docs on hover at the top of the window
-            ;; (setq lsp-ui-doc-enable nil)
-	    )
-  )
 
-;; optional package to get the error squiggles as you edit
-(use-package flycheck
-  :ensure t)
+(use-package zig-mode)
 
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(lsp-ui which-key sideline-flymake rainbow-delimiters magit lsp-treemacs lsp-ivy evil-collection eldoc-box doom-themes doom-modeline counsel-projectile company-box all-the-icons)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
+(setq lsp-zig-zls-executable "/Users/awraam/.zls/zls")
+(setq lsp-zig-zig-exe-path "/Users/awraam/.zig/zig")
+
+(use-package go-mode)
+(add-hook 'go-mode-hook 'lsp-deferred)
